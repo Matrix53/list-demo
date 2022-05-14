@@ -1,6 +1,6 @@
-<script setup lang="ts">
+<script setup lang="tsx">
 import { ref, reactive, onMounted, computed } from 'vue'
-import { useDraggable } from '@vueuse/core'
+import { useDraggable, useIntervalFn } from '@vueuse/core'
 import {
   NGrid,
   NGi,
@@ -38,19 +38,45 @@ const pagination = reactive({
   pageSize: 6,
   pageSlot: 5,
 })
-const keyWord = ref('')
+const inputText = ref('')
+const keyWord = ref<RegExp>(/.*/)
 const rawData = ref<RowDataItem[]>([])
 const columns: DataTableColumn[] = [
-  { title: 'Cluster', key: 'cluster', sortOrder: false, sorter: 'default' },
+  {
+    title: 'Cluster',
+    key: 'cluster',
+    defaultSortOrder: 'ascend',
+    sorter: 'default',
+  },
   {
     title: 'Department',
     key: 'department',
-    sortOrder: false,
     sorter: 'default',
   },
-  { title: 'Reserved', key: 'reserved', sortOrder: false, sorter: 'default' },
-  { title: 'SpotUsed', key: 'spotUsed', sortOrder: false, sorter: 'default' },
-  { title: 'Block', key: 'block', sortOrder: false, sorter: 'default' },
+  {
+    title: 'Reserved',
+    key: 'reserved',
+    sorter: 'default',
+    render: (rowData: object) => {
+      return <>{(rowData as RowDataItem).reserved}</>
+    },
+  },
+  {
+    title: 'SpotUsed',
+    key: 'spotUsed',
+    sorter: 'default',
+    render: (rowData: object) => {
+      return <>{(rowData as RowDataItem).spotUsed}</>
+    },
+  },
+  {
+    title: 'Block',
+    key: 'block',
+    sorter: 'default',
+    render: (rowData: object) => {
+      return <>{(rowData as RowDataItem).block}</>
+    },
+  },
 ]
 
 const { style } = useDraggable(container, {
@@ -74,9 +100,16 @@ const { style } = useDraggable(container, {
     ;(event.target as HTMLElement).style.cursor = ''
   },
 })
+const { pause, resume, isActive } = useIntervalFn(getTableData, 2500, {
+  immediateCallback: true,
+})
 
 const filteredData = computed(() => {
-  return rawData.value
+  return rawData.value.filter((item) => {
+    return (
+      item.cluster.match(keyWord.value) || item.department.match(keyWord.value)
+    )
+  })
 })
 const maxData = computed(() => {
   return rawData.value.reduce((max, item) => {
@@ -92,7 +125,6 @@ onMounted(() => {
   document
     .querySelector('#data-table .n-pagination')
     ?.setAttribute('data-drag-protected', '')
-  setInterval(getTableData, 2500)
 })
 
 function onLock(event: MouseEvent) {
@@ -103,11 +135,12 @@ function onFold(event: MouseEvent) {
   isFolded.value = !isFolded.value
   ;(event.currentTarget as HTMLElement).blur()
 }
-function updateTable() {
-  console.log('updateTable')
+function onSearch() {
+  keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
 }
 function ResetFilter() {
-  console.log('ResetFilter')
+  inputText.value = ''
+  keyWord.value = /.*/
 }
 function getTableData() {
   let clusterList = [
@@ -208,16 +241,11 @@ function getTableData() {
             <n-input
               data-drag-protected
               placeholder="Search Clus. or Dept."
-              v-model:value="keyWord"
+              v-model:value="inputText"
               type="text"
-              @keyup.enter="updateTable"
+              @keyup.enter="onSearch"
             />
-            <n-button
-              data-drag-protected
-              primary
-              type="info"
-              @click="updateTable"
-            >
+            <n-button data-drag-protected primary type="info" @click="onSearch">
               Search
             </n-button>
           </n-input-group>
