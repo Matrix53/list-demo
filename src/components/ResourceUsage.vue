@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useDraggable } from '@vueuse/core'
 import {
   NGrid,
@@ -19,16 +19,27 @@ import {
   LockClosedOutline,
   LockOpenOutline,
 } from '@vicons/ionicons5'
+
 import type { DataTableColumn } from 'naive-ui'
+interface RowDataItem {
+  cluster: string
+  department: string
+  reserved: number
+  spotUsed: number
+  block: number
+}
 
 const props = defineProps<{ initX: number; initY: number }>()
 
 const container = ref<HTMLElement | null>(null)
 const isDraggable = ref(true)
 const isFolded = ref(false)
+const pagination = reactive({
+  pageSize: 6,
+  pageSlot: 5,
+})
 const keyWord = ref('')
-const pagination = reactive({})
-const data = ref([])
+const rawData = ref<RowDataItem[]>([])
 const columns: DataTableColumn[] = [
   { title: 'Cluster', key: 'cluster', sortOrder: false, sorter: 'default' },
   {
@@ -41,6 +52,7 @@ const columns: DataTableColumn[] = [
   { title: 'SpotUsed', key: 'spotUsed', sortOrder: false, sorter: 'default' },
   { title: 'Block', key: 'block', sortOrder: false, sorter: 'default' },
 ]
+
 const { style } = useDraggable(container, {
   initialValue: { x: props.initX, y: props.initY },
   preventDefault: true,
@@ -63,6 +75,16 @@ const { style } = useDraggable(container, {
   },
 })
 
+const filteredData = computed(() => {
+  return rawData.value
+})
+const maxData = computed(() => {
+  return rawData.value.reduce((max, item) => {
+    let tmp = Math.max(item.block, item.reserved, item.spotUsed)
+    return Math.max(max, tmp)
+  }, 0)
+})
+
 onMounted(() => {
   document
     .querySelector('#data-table .n-data-table-wrapper')
@@ -70,7 +92,7 @@ onMounted(() => {
   document
     .querySelector('#data-table .n-pagination')
     ?.setAttribute('data-drag-protected', '')
-  getTableData()
+  setInterval(getTableData, 2500)
 })
 
 function onLock(event: MouseEvent) {
@@ -88,7 +110,41 @@ function ResetFilter() {
   console.log('ResetFilter')
 }
 function getTableData() {
-  console.log('getTableData')
+  let clusterList = [
+    'sh38',
+    'bj15',
+    'sh231',
+    'bh154',
+    'ck23',
+    'ml68',
+    'pku39',
+    'vl27',
+    'tc39',
+  ]
+  let departmentList = [
+    'Model',
+    'STC',
+    'ToolChain',
+    'Thoery',
+    'DataSet',
+    'Algorithm',
+    'Production',
+    'Test',
+    'Hardware',
+  ]
+  let randomData: RowDataItem[] = []
+  clusterList.forEach((cluster) => {
+    departmentList.forEach((department) => {
+      randomData.push({
+        cluster,
+        department,
+        reserved: Math.floor(Math.random() * 100),
+        spotUsed: Math.floor(Math.random() * 100),
+        block: Math.floor(Math.random() * 100),
+      })
+    })
+  })
+  rawData.value = randomData
 }
 </script>
 
@@ -180,7 +236,7 @@ function getTableData() {
         <n-gi :span="24" class="mt-2">
           <n-data-table
             :columns="columns"
-            :data="data"
+            :data="filteredData"
             :pagination="pagination"
             id="data-table"
           />
