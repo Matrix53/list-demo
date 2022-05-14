@@ -44,13 +44,13 @@ const keyWord = ref<RegExp>(/.*/)
 const rawData = ref<RowDataItem[]>([])
 
 const palette = [
-  '#eff6ff',
-  '#dbeafe',
-  '#bfdbfe',
-  '#93c5fd',
-  '#60a5fa',
-  '#3b82f6',
-  '#2563eb',
+  ['#eff6ff', '#000'],
+  ['#dbeafe', '#000'],
+  ['#bfdbfe', '#000'],
+  ['#93c5fd', '#000'],
+  ['#60a5fa', '#fff'],
+  ['#3b82f6', '#fff'],
+  ['#2563eb', '#fff'],
 ]
 const columns: DataTableColumn[] = [
   {
@@ -216,7 +216,8 @@ function addCellProps(attr: keyof RowDataItem) {
     )
     return {
       style: {
-        backgroundColor: palette[index],
+        backgroundColor: palette[index][0],
+        color: palette[index][1],
       },
     }
   }
