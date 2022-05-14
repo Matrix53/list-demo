@@ -32,6 +32,7 @@ interface RowDataItem {
 const props = defineProps<{ initX: number; initY: number }>()
 
 const container = ref<HTMLElement | null>(null)
+const dataTable = ref<InstanceType<typeof NDataTable> | null>(null)
 const isDraggable = ref(true)
 const isFolded = ref(false)
 const pagination = reactive({
@@ -55,6 +56,7 @@ const columns: DataTableColumn[] = [
   {
     title: 'Cluster',
     key: 'cluster',
+    width: 110,
     defaultSortOrder: 'ascend',
     sorter: 'default',
   },
@@ -66,21 +68,24 @@ const columns: DataTableColumn[] = [
   {
     title: 'Reserved',
     key: 'reserved',
-    sorter: 'default',
+    width: 115,
+    sorter: createSorter('reserved', 3),
     render: renderCell('reserved'),
     cellProps: addCellProps('reserved'),
   },
   {
     title: 'SpotUsed',
     key: 'spotUsed',
-    sorter: 'default',
+    width: 115,
+    sorter: createSorter('spotUsed', 2),
     render: renderCell('spotUsed'),
     cellProps: addCellProps('spotUsed'),
   },
   {
     title: 'Block',
     key: 'block',
-    sorter: 'default',
+    width: 115,
+    sorter: createSorter('block', 1),
     render: renderCell('block'),
     cellProps: addCellProps('block'),
   },
@@ -148,6 +153,8 @@ function onSearch() {
 function resetFilter() {
   inputText.value = ''
   keyWord.value = /.*/
+  dataTable.value?.clearSorter()
+  dataTable.value?.page(1)
 }
 function getTableData() {
   let clusterList = [
@@ -185,6 +192,14 @@ function getTableData() {
     })
   })
   rawData.value = randomData
+}
+function createSorter(attr: keyof RowDataItem, multiple: number) {
+  return {
+    compare: (row1: any, row2: any) =>
+      ((row1 as RowDataItem)[attr] as number) -
+      ((row2 as RowDataItem)[attr] as number),
+    multiple,
+  }
 }
 function renderCell(attr: keyof RowDataItem) {
   return (rowData: object) => {
@@ -292,6 +307,7 @@ function addCellProps(attr: keyof RowDataItem) {
             :data="filteredData"
             :pagination="pagination"
             id="data-table"
+            ref="dataTable"
           />
         </n-gi>
       </n-grid>

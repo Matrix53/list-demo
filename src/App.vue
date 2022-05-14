@@ -16,7 +16,7 @@ const themeOverrides: GlobalThemeOverrides = {
 
 <template>
   <n-config-provider :theme-overrides="themeOverrides">
-    <resource-usage :init-x="300" :init-y="200" />
+    <resource-usage :init-x="300" :init-y="150" />
   </n-config-provider>
 </template>
 
