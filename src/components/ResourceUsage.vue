@@ -41,6 +41,16 @@ const pagination = reactive({
 const inputText = ref('')
 const keyWord = ref<RegExp>(/.*/)
 const rawData = ref<RowDataItem[]>([])
+
+const palette = [
+  '#eff6ff',
+  '#dbeafe',
+  '#bfdbfe',
+  '#93c5fd',
+  '#60a5fa',
+  '#3b82f6',
+  '#2563eb',
+]
 const columns: DataTableColumn[] = [
   {
     title: 'Cluster',
@@ -57,25 +67,22 @@ const columns: DataTableColumn[] = [
     title: 'Reserved',
     key: 'reserved',
     sorter: 'default',
-    render: (rowData: object) => {
-      return <>{(rowData as RowDataItem).reserved}</>
-    },
+    render: renderCell('reserved'),
+    cellProps: addCellProps('reserved'),
   },
   {
     title: 'SpotUsed',
     key: 'spotUsed',
     sorter: 'default',
-    render: (rowData: object) => {
-      return <>{(rowData as RowDataItem).spotUsed}</>
-    },
+    render: renderCell('spotUsed'),
+    cellProps: addCellProps('spotUsed'),
   },
   {
     title: 'Block',
     key: 'block',
     sorter: 'default',
-    render: (rowData: object) => {
-      return <>{(rowData as RowDataItem).block}</>
-    },
+    render: renderCell('block'),
+    cellProps: addCellProps('block'),
   },
 ]
 
@@ -138,7 +145,7 @@ function onFold(event: MouseEvent) {
 function onSearch() {
   keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
 }
-function ResetFilter() {
+function resetFilter() {
   inputText.value = ''
   keyWord.value = /.*/
 }
@@ -178,6 +185,24 @@ function getTableData() {
     })
   })
   rawData.value = randomData
+}
+function renderCell(attr: keyof RowDataItem) {
+  return (rowData: object) => {
+    return <>{(rowData as RowDataItem)[attr]}</>
+  }
+}
+function addCellProps(attr: keyof RowDataItem) {
+  return (rowData: object) => {
+    let index = Math.floor(
+      (((rowData as RowDataItem)[attr] as number) * (palette.length - 1)) /
+        maxData.value
+    )
+    return {
+      style: {
+        backgroundColor: palette[index],
+      },
+    }
+  }
 }
 </script>
 
@@ -256,7 +281,7 @@ function getTableData() {
             class="ml-2"
             type="info"
             ghost
-            @click="ResetFilter"
+            @click="resetFilter"
           >
             Reset
           </n-button>
