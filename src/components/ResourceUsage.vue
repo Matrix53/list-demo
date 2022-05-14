@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, onUpdated } from 'vue'
 import { useDraggable, useIntervalFn } from '@vueuse/core'
 import {
   NGrid,
@@ -130,14 +130,8 @@ const maxData = computed(() => {
   }, 0)
 })
 
-onMounted(() => {
-  document
-    .querySelector('#data-table .n-data-table-wrapper')
-    ?.setAttribute('data-drag-protected', '')
-  document
-    .querySelector('#data-table .n-pagination')
-    ?.setAttribute('data-drag-protected', '')
-})
+onMounted(addDragProtection)
+onUpdated(addDragProtection)
 
 function onLock(event: MouseEvent) {
   isDraggable.value = !isDraggable.value
@@ -149,6 +143,14 @@ function onFold(event: MouseEvent) {
 }
 function onSearch() {
   keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
+}
+function addDragProtection() {
+  document
+    .querySelector('#data-table .n-data-table-wrapper')
+    ?.setAttribute('data-drag-protected', '')
+  document
+    .querySelector('#data-table .n-pagination')
+    ?.setAttribute('data-drag-protected', '')
 }
 function resetFilter() {
   inputText.value = ''
