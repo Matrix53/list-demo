@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useDraggable } from '@vueuse/core'
 import {
   NGrid,
@@ -19,16 +19,28 @@ import {
   LockClosedOutline,
   LockOpenOutline,
 } from '@vicons/ionicons5'
+import type { DataTableColumn } from 'naive-ui'
 
 const props = defineProps<{ initX: number; initY: number }>()
 
 const container = ref<HTMLElement | null>(null)
 const isDraggable = ref(true)
 const isFolded = ref(false)
-const columns = ref([])
-const data = ref([])
+const keyWord = ref('')
 const pagination = reactive({})
-
+const data = ref([])
+const columns: DataTableColumn[] = [
+  { title: 'Cluster', key: 'cluster', sortOrder: false, sorter: 'default' },
+  {
+    title: 'Department',
+    key: 'department',
+    sortOrder: false,
+    sorter: 'default',
+  },
+  { title: 'Reserved', key: 'reserved', sortOrder: false, sorter: 'default' },
+  { title: 'SpotUsed', key: 'spotUsed', sortOrder: false, sorter: 'default' },
+  { title: 'Block', key: 'block', sortOrder: false, sorter: 'default' },
+]
 const { style } = useDraggable(container, {
   initialValue: { x: props.initX, y: props.initY },
   preventDefault: true,
@@ -51,6 +63,16 @@ const { style } = useDraggable(container, {
   },
 })
 
+onMounted(() => {
+  document
+    .querySelector('#data-table .n-data-table-wrapper')
+    ?.setAttribute('data-drag-protected', '')
+  document
+    .querySelector('#data-table .n-pagination')
+    ?.setAttribute('data-drag-protected', '')
+  getTableData()
+})
+
 function onLock(event: MouseEvent) {
   isDraggable.value = !isDraggable.value
   ;(event.currentTarget as HTMLElement).blur()
@@ -58,6 +80,15 @@ function onLock(event: MouseEvent) {
 function onFold(event: MouseEvent) {
   isFolded.value = !isFolded.value
   ;(event.currentTarget as HTMLElement).blur()
+}
+function updateTable() {
+  console.log('updateTable')
+}
+function ResetFilter() {
+  console.log('ResetFilter')
+}
+function getTableData() {
+  console.log('getTableData')
 }
 </script>
 
@@ -118,22 +149,40 @@ function onFold(event: MouseEvent) {
       <n-grid :cols="24" class="mt-2">
         <n-gi :span="10" :offset="11">
           <n-input-group>
-            <n-input data-drag-protected />
-            <n-button data-drag-protected primary type="info">查找</n-button>
+            <n-input
+              data-drag-protected
+              placeholder="Search Clus. or Dept."
+              v-model:value="keyWord"
+              type="text"
+              @keyup.enter="updateTable"
+            />
+            <n-button
+              data-drag-protected
+              primary
+              type="info"
+              @click="updateTable"
+            >
+              Search
+            </n-button>
           </n-input-group>
         </n-gi>
         <n-gi :span="3">
-          <n-button data-drag-protected class="ml-3" type="info" ghost>
-            重置
+          <n-button
+            data-drag-protected
+            class="ml-2"
+            type="info"
+            ghost
+            @click="ResetFilter"
+          >
+            Reset
           </n-button>
         </n-gi>
         <n-gi :span="24" class="mt-2">
           <n-data-table
-            data-drag-protected
             :columns="columns"
             :data="data"
             :pagination="pagination"
-            class="data-table"
+            id="data-table"
           />
         </n-gi>
       </n-grid>
@@ -151,7 +200,7 @@ function onFold(event: MouseEvent) {
   background-color: aliceblue;
 }
 .moving {
-  box-shadow: 0 0 7px #ddd;
+  box-shadow: 0 0 10px #ddd;
 }
 .fold-button:deep(.n-button__icon) {
   width: 24px;
@@ -167,10 +216,14 @@ function onFold(event: MouseEvent) {
   position: relative;
   top: 3px;
 }
-.data-table {
+#data-table {
   min-height: 310px;
 }
-.data-table:deep(.n-data-table__pagination) {
+#data-table:deep(.n-data-table__pagination) {
   margin-top: 9px;
+}
+#data-table:deep(.n-data-table-empty) {
+  padding-top: 100px;
+  padding-bottom: 100px;
 }
 </style>
