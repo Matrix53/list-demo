@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { ref, reactive, onMounted, computed, onUpdated } from 'vue'
+import { ref, onMounted, computed, onUpdated } from 'vue'
 import { useDraggable, useIntervalFn, useElementSize } from '@vueuse/core'
 import {
   NGrid,
@@ -12,6 +12,7 @@ import {
   NInputGroup,
   NCollapseTransition,
   NTooltip,
+  NTag,
 } from 'naive-ui'
 import {
   CaretBackCircleOutline,
@@ -28,6 +29,7 @@ interface RowDataItem {
   reservedUsed: number
   spotUsed: number
   block: number
+  index: number
 }
 
 const props = defineProps<{ initX: number; initY: number }>()
@@ -56,6 +58,44 @@ const columns: DataTableColumn[] = [
     title: 'Cluster',
     key: 'cluster',
     width: 110,
+    align: 'center',
+    rowSpan: (rowData: any, _rowIndex) => {
+      if (
+        rowData.index % pageSize.value !== 0 &&
+        rowData.cluster === filteredData.value[rowData.index - 1].cluster
+      ) {
+        return 1
+      }
+      let i = rowData.index + 1
+      for (; i < filteredData.value.length; i++) {
+        if (
+          rowData.cluster !== filteredData.value[i].cluster ||
+          i % pageSize.value === 0
+        ) {
+          break
+        }
+      }
+      return i - rowData.index
+    },
+    render: (rowData: any, _rowIndex) => {
+      let allType = ['info', 'success', 'warning']
+      let clusterIndex = [
+        'bh154',
+        'bj15',
+        'ck23',
+        'ml68',
+        'pku39',
+        'sh231',
+        'sh38',
+        'tc39',
+        'vl27',
+      ].findIndex((value) => {
+        return value === rowData.cluster
+      })
+      return (
+        <NTag type={allType[clusterIndex % 3] as any}>{rowData.cluster}</NTag>
+      )
+    },
   },
   {
     title: 'Department',
@@ -66,7 +106,14 @@ const columns: DataTableColumn[] = [
     title: 'Reserved',
     key: 'reserved',
     width: 115,
-    render: renderCell('reserved'),
+    render: (rowData: object) => {
+      return (
+        <>
+          {(rowData as RowDataItem)['reservedUsed']} /{' '}
+          {(rowData as RowDataItem)['reserved']}
+        </>
+      )
+    },
     cellProps: addCellProps('reserved'),
   },
   {
@@ -222,6 +269,7 @@ function getTableData() {
         reserved: mockData[cluster][department].RESERVED_TOTAL,
         spotUsed: mockData[cluster][department].SPOT_USED,
         block: mockData[cluster][department].RESERVED_BLOCKED,
+        index: 0,
       })
     }
   }
@@ -230,6 +278,9 @@ function getTableData() {
       a.cluster.localeCompare(b.cluster) ||
       a.department.localeCompare(b.department)
     )
+  })
+  randomData.forEach((item, index) => {
+    item.index = index
   })
   rawData.value = randomData
 }
