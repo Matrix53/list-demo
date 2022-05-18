@@ -1,6 +1,6 @@
 <script setup lang="tsx">
 import { ref, reactive, onMounted, computed, onUpdated } from 'vue'
-import { useDraggable, useIntervalFn } from '@vueuse/core'
+import { useDraggable, useIntervalFn, useElementSize } from '@vueuse/core'
 import {
   NGrid,
   NGi,
@@ -25,23 +25,22 @@ interface RowDataItem {
   cluster: string
   department: string
   reserved: number
+  reservedUsed: number
   spotUsed: number
   block: number
 }
 
 const props = defineProps<{ initX: number; initY: number }>()
 
-const container = ref<HTMLElement | null>(null)
+const container = ref<HTMLDivElement | null>(null)
+const tableContainer = ref<HTMLDivElement | null>(null)
 const dataTable = ref<InstanceType<typeof NDataTable> | null>(null)
 const isDraggable = ref(true)
 const isFolded = ref(false)
-const pagination = reactive({
-  pageSize: 6,
-  pageSlot: 5,
-})
 const inputText = ref('')
 const keyWord = ref<RegExp>(/.*/)
 const rawData = ref<RowDataItem[]>([])
+const storedHeight = ref(421)
 
 const palette = [
   ['#eff6ff', '#000'],
@@ -57,19 +56,16 @@ const columns: DataTableColumn[] = [
     title: 'Cluster',
     key: 'cluster',
     width: 110,
-    defaultSortOrder: 'ascend',
-    sorter: 'default',
   },
   {
     title: 'Department',
     key: 'department',
-    sorter: 'default',
+    width: 120,
   },
   {
     title: 'Reserved',
     key: 'reserved',
     width: 115,
-    sorter: createSorter('reserved', 3),
     render: renderCell('reserved'),
     cellProps: addCellProps('reserved'),
   },
@@ -77,7 +73,6 @@ const columns: DataTableColumn[] = [
     title: 'SpotUsed',
     key: 'spotUsed',
     width: 115,
-    sorter: createSorter('spotUsed', 2),
     render: renderCell('spotUsed'),
     cellProps: addCellProps('spotUsed'),
   },
@@ -85,7 +80,6 @@ const columns: DataTableColumn[] = [
     title: 'Block',
     key: 'block',
     width: 115,
-    sorter: createSorter('block', 1),
     render: renderCell('block'),
     cellProps: addCellProps('block'),
   },
@@ -95,7 +89,13 @@ const { style } = useDraggable(container, {
   initialValue: { x: props.initX, y: props.initY },
   preventDefault: true,
   stopPropagation: true,
-  onStart(_position, event) {
+  onStart(position, event) {
+    if (
+      !isFolded.value &&
+      position.x + 15 >= container.value!.clientWidth &&
+      position.y + 15 >= container.value!.clientHeight
+    )
+      return false
     if (!isDraggable.value) return false
     for (
       let tmp = event.target as HTMLElement;
@@ -112,10 +112,14 @@ const { style } = useDraggable(container, {
     ;(event.target as HTMLElement).style.cursor = ''
   },
 })
-const { pause, resume, isActive } = useIntervalFn(getTableData, 2500, {
+useIntervalFn(getTableData, 2500, {
   immediateCallback: true,
 })
+const { height } = useElementSize(tableContainer)
 
+const pageSize = computed(() => {
+  return Math.floor((height.value - 139) / 47)
+})
 const filteredData = computed(() => {
   return rawData.value.filter((item) => {
     return (
@@ -138,6 +142,7 @@ function onLock(event: MouseEvent) {
   ;(event.currentTarget as HTMLElement).blur()
 }
 function onFold(event: MouseEvent) {
+  if (!isFolded.value) storedHeight.value = height.value
   isFolded.value = !isFolded.value
   ;(event.currentTarget as HTMLElement).blur()
 }
@@ -158,7 +163,7 @@ function resetFilter() {
   dataTable.value?.clearSorter()
   dataTable.value?.page(1)
 }
-function getTableData() {
+function generateData() {
   let clusterList = [
     'sh38',
     'bj15',
@@ -181,27 +186,52 @@ function getTableData() {
     'Test',
     'Hardware',
   ]
-  let randomData: RowDataItem[] = []
+  let res: Record<string, Record<string, Record<string, number>>> = {}
   clusterList.forEach((cluster) => {
+    let tmp = {}
     departmentList.forEach((department) => {
+      Object.defineProperty(tmp, department, {
+        value: {
+          RESERVED_TOTAL: Math.floor(Math.random() * 100),
+          RESERVED_USED: Math.floor(Math.random() * 100),
+          RESERVED_IDLE: Math.floor(Math.random() * 100),
+          SPOT_USED: Math.floor(Math.random() * 100),
+          RESERVED_BLOCKED: Math.floor(Math.random() * 100),
+        },
+        writable: true,
+        enumerable: true,
+      })
+    })
+    Object.defineProperty(res, cluster, {
+      value: tmp,
+      writable: true,
+      enumerable: true,
+    })
+  })
+  return res
+}
+function getTableData() {
+  let mockData = generateData()
+  let randomData: RowDataItem[] = []
+  for (let cluster in mockData) {
+    for (let department in mockData[cluster]) {
       randomData.push({
         cluster,
         department,
-        reserved: Math.floor(Math.random() * 100),
-        spotUsed: Math.floor(Math.random() * 100),
-        block: Math.floor(Math.random() * 100),
+        reservedUsed: mockData[cluster][department].RESERVED_USED,
+        reserved: mockData[cluster][department].RESERVED_TOTAL,
+        spotUsed: mockData[cluster][department].SPOT_USED,
+        block: mockData[cluster][department].RESERVED_BLOCKED,
       })
-    })
+    }
+  }
+  randomData.sort((a, b) => {
+    return (
+      a.cluster.localeCompare(b.cluster) ||
+      a.department.localeCompare(b.department)
+    )
   })
   rawData.value = randomData
-}
-function createSorter(attr: keyof RowDataItem, multiple: number) {
-  return {
-    compare: (row1: any, row2: any) =>
-      ((row1 as RowDataItem)[attr] as number) -
-      ((row2 as RowDataItem)[attr] as number),
-    multiple,
-  }
 }
 function renderCell(attr: keyof RowDataItem) {
   return (rowData: object) => {
@@ -225,7 +255,11 @@ function addCellProps(attr: keyof RowDataItem) {
 </script>
 
 <template>
-  <div class="container" ref="container" :style="style">
+  <div
+    class="container"
+    ref="container"
+    :style="[style, { paddingBottom: isFolded ? '10px' : '0px' }]"
+  >
     <n-grid :cols="24">
       <n-gi :span="7" :offset="1">
         <n-h2 class="mb-0 cursor-default">Resource Usage</n-h2>
@@ -278,42 +312,63 @@ function addCellProps(attr: keyof RowDataItem) {
       </n-gi>
     </n-grid>
     <n-collapse-transition :show="!isFolded">
-      <n-grid :cols="24" class="mt-2">
-        <n-gi :span="10" :offset="11">
-          <n-input-group>
-            <n-input
+      <div
+        :style="{
+          paddingBottom: '10px',
+          paddingRight: '10px',
+          height: storedHeight + 'px',
+          resize: 'vertical',
+          overflow: 'hidden',
+          minHeight: '280px',
+        }"
+        ref="tableContainer"
+      >
+        <n-grid :cols="24" class="mt-2">
+          <n-gi :span="10" :offset="11">
+            <n-input-group>
+              <n-input
+                data-drag-protected
+                placeholder="Search Clus. or Dept."
+                v-model:value="inputText"
+                type="text"
+                @keyup.enter="onSearch"
+              />
+              <n-button
+                data-drag-protected
+                primary
+                type="info"
+                @click="onSearch"
+              >
+                Search
+              </n-button>
+            </n-input-group>
+          </n-gi>
+          <n-gi :span="3">
+            <n-button
               data-drag-protected
-              placeholder="Search Clus. or Dept."
-              v-model:value="inputText"
-              type="text"
-              @keyup.enter="onSearch"
-            />
-            <n-button data-drag-protected primary type="info" @click="onSearch">
-              Search
+              class="ml-2"
+              type="info"
+              ghost
+              @click="resetFilter"
+            >
+              Reset
             </n-button>
-          </n-input-group>
-        </n-gi>
-        <n-gi :span="3">
-          <n-button
-            data-drag-protected
-            class="ml-2"
-            type="info"
-            ghost
-            @click="resetFilter"
-          >
-            Reset
-          </n-button>
-        </n-gi>
-        <n-gi :span="24" class="mt-2">
-          <n-data-table
-            :columns="columns"
-            :data="filteredData"
-            :pagination="pagination"
-            id="data-table"
-            ref="dataTable"
-          />
-        </n-gi>
-      </n-grid>
+          </n-gi>
+          <n-gi :span="24" class="mt-2">
+            <n-data-table
+              :columns="columns"
+              :data="filteredData"
+              :single-line="false"
+              :pagination="{
+                pageSize,
+                pageSlot: 5,
+              }"
+              id="data-table"
+              ref="dataTable"
+            />
+          </n-gi>
+        </n-grid>
+      </div>
     </n-collapse-transition>
   </div>
 </template>
@@ -324,7 +379,7 @@ function addCellProps(attr: keyof RowDataItem) {
   border: 1px solid #ddd;
   border-radius: 10px;
   width: 600px;
-  padding: 10px;
+  padding: 10px 0px 0px 10px;
   background-color: aliceblue;
 }
 .moving {
@@ -343,9 +398,6 @@ function addCellProps(attr: keyof RowDataItem) {
 .fold-button {
   position: relative;
   top: 3px;
-}
-#data-table {
-  min-height: 310px;
 }
 #data-table:deep(.n-data-table__pagination) {
   margin-top: 9px;
