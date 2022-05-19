@@ -13,6 +13,7 @@ import {
   NCollapseTransition,
   NTooltip,
   NTag,
+  NSwitch,
 } from 'naive-ui'
 import {
   CaretBackCircleOutline,
@@ -28,7 +29,7 @@ interface RowDataItem {
   reserved: number
   reservedUsed: number
   spotUsed: number
-  block: number
+  blocked: number
   index: number
 }
 
@@ -39,20 +40,12 @@ const tableContainer = ref<HTMLDivElement | null>(null)
 const dataTable = ref<InstanceType<typeof NDataTable> | null>(null)
 const isDraggable = ref(true)
 const isFolded = ref(false)
+const isBlockHidden = ref(true)
 const inputText = ref('')
 const keyWord = ref<RegExp>(/.*/)
 const rawData = ref<RowDataItem[]>([])
 const storedHeight = ref(421)
 
-const palette = [
-  ['#eff6ff', '#000'],
-  ['#dbeafe', '#000'],
-  ['#bfdbfe', '#000'],
-  ['#93c5fd', '#000'],
-  ['#60a5fa', '#fff'],
-  ['#3b82f6', '#fff'],
-  ['#2563eb', '#fff'],
-]
 const columns: DataTableColumn[] = [
   {
     title: 'Cluster',
@@ -114,21 +107,36 @@ const columns: DataTableColumn[] = [
         </>
       )
     },
-    cellProps: addCellProps('reserved'),
+    cellProps: (rowData: object) => {
+      let percentage =
+        1 -
+        (rowData as RowDataItem).reservedUsed /
+          (rowData as RowDataItem).reserved
+      let red = Math.floor(percentage * 255)
+      let green = Math.floor(128 + percentage * 127)
+      return {
+        style: {
+          backgroundColor:
+            percentage === 0 ? `rgb(255,88,91)` : `rgb(${red}, ${green}, 255)`,
+          color: percentage > 0.5 ? '#000' : '#fff',
+        },
+      }
+    },
   },
   {
     title: 'SpotUsed',
     key: 'spotUsed',
     width: 115,
     render: renderCell('spotUsed'),
-    cellProps: addCellProps('spotUsed'),
   },
+]
+const extendedColumns = [
+  ...columns,
   {
-    title: 'Block',
-    key: 'block',
+    title: 'Blocked',
+    key: 'blocked',
     width: 115,
-    render: renderCell('block'),
-    cellProps: addCellProps('block'),
+    render: renderCell('blocked'),
   },
 ]
 
@@ -173,12 +181,6 @@ const filteredData = computed(() => {
       item.cluster.match(keyWord.value) || item.department.match(keyWord.value)
     )
   })
-})
-const maxData = computed(() => {
-  return rawData.value.reduce((max, item) => {
-    let tmp = Math.max(item.block, item.reserved, item.spotUsed)
-    return Math.max(max, tmp)
-  }, 0)
 })
 
 onMounted(addDragProtection)
@@ -237,11 +239,12 @@ function generateData() {
   clusterList.forEach((cluster) => {
     let tmp = {}
     departmentList.forEach((department) => {
+      let total = Math.floor(Math.random() * 100)
       Object.defineProperty(tmp, department, {
         value: {
-          RESERVED_TOTAL: Math.floor(Math.random() * 100),
-          RESERVED_USED: Math.floor(Math.random() * 100),
-          RESERVED_IDLE: Math.floor(Math.random() * 100),
+          RESERVED_TOTAL: total,
+          RESERVED_USED: Math.floor(Math.random() * total) + 1,
+          RESERVED_IDLE: Math.floor(Math.random() * total) + 1,
           SPOT_USED: Math.floor(Math.random() * 100),
           RESERVED_BLOCKED: Math.floor(Math.random() * 100),
         },
@@ -268,7 +271,7 @@ function getTableData() {
         reservedUsed: mockData[cluster][department].RESERVED_USED,
         reserved: mockData[cluster][department].RESERVED_TOTAL,
         spotUsed: mockData[cluster][department].SPOT_USED,
-        block: mockData[cluster][department].RESERVED_BLOCKED,
+        blocked: mockData[cluster][department].RESERVED_BLOCKED,
         index: 0,
       })
     }
@@ -289,33 +292,25 @@ function renderCell(attr: keyof RowDataItem) {
     return <>{(rowData as RowDataItem)[attr]}</>
   }
 }
-function addCellProps(attr: keyof RowDataItem) {
-  return (rowData: object) => {
-    let index = Math.floor(
-      (((rowData as RowDataItem)[attr] as number) * (palette.length - 1)) /
-        maxData.value
-    )
-    return {
-      style: {
-        backgroundColor: palette[index][0],
-        color: palette[index][1],
-      },
-    }
-  }
-}
 </script>
 
 <template>
   <div
     class="container"
     ref="container"
-    :style="[style, { paddingBottom: isFolded ? '10px' : '0px' }]"
+    :style="[
+      style,
+      {
+        paddingBottom: isFolded ? '10px' : '0px',
+        width: isBlockHidden ? '485px' : '600px',
+      },
+    ]"
   >
-    <n-grid :cols="24">
-      <n-gi :span="7" :offset="1">
+    <n-grid cols="24" item-responsive>
+      <n-gi span="10 500:7" offset="1">
         <n-h2 class="mb-0 cursor-default">Resource Usage</n-h2>
       </n-gi>
-      <n-gi :span="3" :offset="13">
+      <n-gi span="4 500:3" offset="9 500:13">
         <n-tooltip trigger="hover" :duration="50" :delay="650">
           <template #trigger>
             <n-button
@@ -374,8 +369,18 @@ function addCellProps(attr: keyof RowDataItem) {
         }"
         ref="tableContainer"
       >
-        <n-grid :cols="24" class="mt-2">
-          <n-gi :span="10" :offset="11">
+        <n-grid cols="24" class="mt-2" item-responsive>
+          <n-gi span="6" offset="1" class="mt-1">
+            <n-switch
+              :round="false"
+              v-model:value="isBlockHidden"
+              data-drag-protected
+            >
+              <template #checked>Hide Blocked</template>
+              <template #unchecked>Show Blocked</template>
+            </n-switch>
+          </n-gi>
+          <n-gi span="10" offset="3 500:4">
             <n-input-group>
               <n-input
                 data-drag-protected
@@ -407,7 +412,7 @@ function addCellProps(attr: keyof RowDataItem) {
           </n-gi>
           <n-gi :span="24" class="mt-2">
             <n-data-table
-              :columns="columns"
+              :columns="isBlockHidden ? columns : extendedColumns"
               :data="filteredData"
               :single-line="false"
               :pagination="{
@@ -429,7 +434,7 @@ function addCellProps(attr: keyof RowDataItem) {
   position: fixed;
   border: 1px solid #ddd;
   border-radius: 10px;
-  width: 600px;
+  width: 485px;
   padding: 10px 0px 0px 10px;
   background-color: aliceblue;
 }
