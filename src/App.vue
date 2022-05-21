@@ -6,14 +6,15 @@
 </template>
 
 <script>
-import HelloWorld from "./components/HelloWorld.vue";
+import { defineComponent } from '@vue/runtime-core'
+import HelloWorld from './components/HelloWorld.vue'
 
-export default {
-  name: "App",
+export default defineComponent({
+  name: 'App',
   components: {
     HelloWorld,
   },
-};
+})
 </script>
 
 <style>

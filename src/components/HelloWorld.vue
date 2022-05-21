@@ -87,12 +87,14 @@
 </template>
 
 <script>
-export default {
-  name: "HelloWorld",
+import { defineComponent } from '@vue/runtime-core'
+
+export default defineComponent({
+  name: 'HelloWorld',
   props: {
     msg: String,
   },
-};
+})
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
