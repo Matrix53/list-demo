@@ -5,16 +5,24 @@
   >
     <div class="grid grid-cols-2">
       <div class="flex justify-start items-center">
-        <h2 class="m-0 ml-3 font-normal text-xl">Resource Usage</h2>
+        <h2 class="m-0 ml-3 font-normal text-xl cursor-default">
+          Resource Usage
+        </h2>
       </div>
       <div class="flex justify-end items-center">
-        <span class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer">
+        <span
+          class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer"
+          data-drag-protected
+        >
           <Icon size="20" color="#2080f0FF">
             <LockOpenOutline v-if="isDraggable" />
             <LockClosedOutline v-else />
           </Icon>
         </span>
-        <span class="round-shadow h-6 w-6 p-1 cursor-pointer">
+        <span
+          class="round-shadow h-6 w-6 p-1 cursor-pointer"
+          data-drag-protected
+        >
           <Icon size="24" color="#2080f0FF">
             <CaretBackCircleOutline v-if="isFolded" />
             <CaretDownCircleOutline v-else />
@@ -23,12 +31,34 @@
       </div>
     </div>
     <div ref="tableContainer">
-      <div class="grid grid-cols-2">
+      <div class="mt-1 grid grid-cols-3">
         <div class="flex justify-start items-center">
-          <el-switch v-model="isBlockHidden" active-text="Hide Blocked">
+          <el-switch
+            v-model="isBlockHidden"
+            active-text="Hide Blocked"
+            class="ml-3"
+            data-drag-protected
+          >
           </el-switch>
         </div>
-        <div class="flex justify-end items-center"></div>
+        <div class="col-span-2 flex justify-end items-center">
+          <el-input
+            placeholder="Clus. or Dept."
+            v-model="inputText"
+            size="medium"
+            class="mr-2 w-[200px]"
+            data-drag-protected
+          >
+            <el-button slot="append" id="search-btn">Search</el-button>
+          </el-input>
+          <el-button
+            size="medium"
+            class="mr-[2px] px-[12px]"
+            data-drag-protected
+          >
+            Reset
+          </el-button>
+        </div>
       </div>
     </div>
   </div>
@@ -185,7 +215,14 @@ export default defineComponent({
       rawData.value = randomData
     }
 
-    return { container, tableContainer, isDraggable, isFolded, isBlockHidden }
+    return {
+      container,
+      tableContainer,
+      isDraggable,
+      isFolded,
+      isBlockHidden,
+      inputText,
+    }
   },
 })
 </script>
@@ -193,5 +230,8 @@ export default defineComponent({
 <style scoped>
 .round-shadow {
   @apply rounded-full flex justify-center items-center transition duration-300 hover:bg-slate-300/50;
+}
+#search-btn {
+  @apply px-[12px] pt-[11px] pb-[10px] rounded-l-none text-white bg-[#409EFF] hover:bg-[#66b1ff];
 }
 </style>
