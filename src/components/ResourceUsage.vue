@@ -1,6 +1,7 @@
 <template>
   <div
     class="fixed rounded-[10px] border border-solid border-gray-200 w-[485px] p-[10px] bg-blue-50"
+    :style="style"
     ref="container"
   >
     <div class="grid grid-cols-2">
@@ -11,7 +12,8 @@
       </div>
       <div class="flex justify-end items-center">
         <span
-          class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer"
+          class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer select-none"
+          @click="onLock"
           data-drag-protected
         >
           <Icon size="20" color="#2080f0FF">
@@ -20,7 +22,8 @@
           </Icon>
         </span>
         <span
-          class="round-shadow h-6 w-6 p-1 cursor-pointer"
+          class="round-shadow h-6 w-6 p-1 cursor-pointer select-none"
+          @click="onFold"
           data-drag-protected
         >
           <Icon size="24" color="#2080f0FF">
@@ -30,7 +33,13 @@
         </span>
       </div>
     </div>
-    <div ref="tableContainer">
+    <div
+      ref="tableContainer"
+      :class="[
+        'overflow-hidden transition-all duration-1000',
+        isFolded ? 'h-0 opacity-0' : `h-[${storedHeight}px] opacity-100`,
+      ]"
+    >
       <div class="mt-1 grid grid-cols-3">
         <div class="flex justify-start items-center">
           <el-switch
@@ -49,7 +58,9 @@
             class="mr-2 w-[200px]"
             data-drag-protected
           >
-            <el-button slot="append" id="search-btn">Search</el-button>
+            <el-button slot="append" id="search-btn" data-drag-protected>
+              Search
+            </el-button>
           </el-input>
           <el-button
             size="medium"
@@ -59,6 +70,27 @@
             Reset
           </el-button>
         </div>
+      </div>
+      <div class="mt-2">
+        <el-table border data-drag-protected>
+          <el-table-column prop="cluster" label="Cluster" width="110">
+          </el-table-column>
+          <el-table-column prop="department" label="Department">
+          </el-table-column>
+          <el-table-column prop="reserved" label="Reserved" width="115">
+          </el-table-column>
+          <el-table-column prop="spotUsed" label="SpotUsed" width="115">
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="mt-1 flex justify-end">
+        <el-pagination
+          background
+          layout="prev, pager, next"
+          class="relative left-2 pb-0"
+          data-drag-protected
+        >
+        </el-pagination>
       </div>
     </div>
   </div>
@@ -105,7 +137,7 @@ export default defineComponent({
     const inputText = ref('')
     const keyWord = ref(/.*/)
     const rawData = ref([])
-    const storedHeight = ref(421)
+    const storedHeight = ref(191)
 
     const { style } = useDraggable(container, {
       initialValue: { x: props.initX, y: props.initY },
@@ -139,6 +171,16 @@ export default defineComponent({
     })
     const { height } = useElementSize(tableContainer)
 
+    function onLock() {
+      isDraggable.value = !isDraggable.value
+    }
+    function onFold() {
+      if (!isFolded.value) storedHeight.value = height.value
+      isFolded.value = !isFolded.value
+    }
+    function onSearch() {
+      keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
+    }
     function generateData() {
       let clusterList = [
         'sh38',
@@ -218,10 +260,15 @@ export default defineComponent({
     return {
       container,
       tableContainer,
+      storedHeight,
       isDraggable,
       isFolded,
       isBlockHidden,
       inputText,
+      style,
+      onSearch,
+      onLock,
+      onFold,
     }
   },
 })
@@ -233,5 +280,8 @@ export default defineComponent({
 }
 #search-btn {
   @apply px-[12px] pt-[11px] pb-[10px] rounded-l-none text-white bg-[#409EFF] hover:bg-[#66b1ff];
+}
+.moving {
+  @apply shadow-lg;
 }
 </style>
