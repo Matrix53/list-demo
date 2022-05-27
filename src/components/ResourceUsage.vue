@@ -1,7 +1,36 @@
 <template>
-  <div class="container" ref="container">
-    <div class="h-60 w-60"></div>
-    <div ref="tableContainer"></div>
+  <div
+    class="fixed rounded-[10px] border border-solid border-gray-200 w-[485px] p-[10px] bg-blue-50"
+    ref="container"
+  >
+    <div class="grid grid-cols-2">
+      <div class="flex justify-start items-center">
+        <h2 class="m-0 ml-3 font-normal text-xl">Resource Usage</h2>
+      </div>
+      <div class="flex justify-end items-center">
+        <span class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer">
+          <Icon size="20" color="#2080f0FF">
+            <LockOpenOutline v-if="isDraggable" />
+            <LockClosedOutline v-else />
+          </Icon>
+        </span>
+        <span class="round-shadow h-6 w-6 p-1 cursor-pointer">
+          <Icon size="24" color="#2080f0FF">
+            <CaretBackCircleOutline v-if="isFolded" />
+            <CaretDownCircleOutline v-else />
+          </Icon>
+        </span>
+      </div>
+    </div>
+    <div ref="tableContainer">
+      <div class="grid grid-cols-2">
+        <div class="flex justify-start items-center">
+          <el-switch v-model="isBlockHidden" active-text="Hide Blocked">
+          </el-switch>
+        </div>
+        <div class="flex justify-end items-center"></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -15,6 +44,7 @@ import {
   LockClosedOutline,
   LockOpenOutline,
 } from '@v2icons/ionicons5'
+import { Icon } from '@v2icons/utils'
 
 export default defineComponent({
   name: 'ResourceUsage',
@@ -27,6 +57,13 @@ export default defineComponent({
       type: Number,
       default: 150,
     },
+  },
+  components: {
+    CaretBackCircleOutline,
+    CaretDownCircleOutline,
+    LockClosedOutline,
+    LockOpenOutline,
+    Icon,
   },
   setup(props) {
     const container = ref(null)
@@ -121,7 +158,7 @@ export default defineComponent({
       return res
     }
     function getTableData() {
-      let mockData = this.generateData()
+      let mockData = generateData()
       let randomData = []
       for (let cluster in mockData) {
         for (let department in mockData[cluster]) {
@@ -148,18 +185,13 @@ export default defineComponent({
       rawData.value = randomData
     }
 
-    return { container, tableContainer }
+    return { container, tableContainer, isDraggable, isFolded, isBlockHidden }
   },
 })
 </script>
 
 <style scoped>
-.container {
-  position: fixed;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  width: 485px;
-  padding: 10px 0px 0px 10px;
-  background-color: aliceblue;
+.round-shadow {
+  @apply rounded-full flex justify-center items-center transition duration-300 hover:bg-slate-300/50;
 }
 </style>
