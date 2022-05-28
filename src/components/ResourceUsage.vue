@@ -38,84 +38,101 @@
     </div>
     <div
       :class="[
-        'overflow-hidden transition-[opacity] duration-300',
+        'flex flex-col justify-between overflow-hidden transition-[opacity] duration-300',
         isFolded ? 'opacity-0' : 'opacity-100',
         { folding: isFolding },
       ]"
-      :style="{ height: isFolded ? '0px' : storedHeight + 'px' }"
+      :style="{ height: isFolded ? '0px' : contentHeight + 'px' }"
       ref="content"
     >
-      <div class="mt-1 grid grid-cols-3">
-        <div class="flex justify-start items-center">
-          <el-button-group data-drag-protected class="ml-1">
-            <el-button
-              icon="el-icon-plus"
-              size="small"
-              @click="onAddPageSize"
-              plain
-            >
-            </el-button>
-            <el-button
-              icon="el-icon-minus"
-              size="small"
-              @click="onSubPageSize"
-              plain
-            >
-            </el-button>
-          </el-button-group>
-        </div>
-        <div class="col-span-2 flex justify-end items-center">
-          <el-input
-            :placeholder="
-              isBlockHidden ? 'Clus. or Dept.' : 'Search Clus. or Dept.'
-            "
-            v-model="inputText"
-            size="medium"
-            :class="[
-              'mr-2 transition-[width] duration-300',
-              isBlockHidden ? 'w-[200px]' : 'w-[250px]',
-            ]"
-            @keyup.native.enter="onSearch"
-            data-drag-protected
-          >
-            <el-button
-              slot="append"
-              id="search-btn"
-              @click="onSearch"
+      <div>
+        <div class="mt-1 grid grid-cols-3">
+          <div class="flex justify-start items-center">
+            <el-button-group data-drag-protected class="ml-1">
+              <el-button
+                icon="el-icon-plus"
+                size="small"
+                @click="onAddPageSize"
+                plain
+              >
+              </el-button>
+              <el-button
+                icon="el-icon-minus"
+                size="small"
+                @click="onSubPageSize"
+                plain
+              >
+              </el-button>
+            </el-button-group>
+          </div>
+          <div class="col-span-2 flex justify-end items-center">
+            <el-input
+              :placeholder="
+                isBlockHidden ? 'Clus. or Dept.' : 'Search Clus. or Dept.'
+              "
+              v-model="inputText"
+              size="medium"
+              :class="[
+                'mr-2 transition-[width] duration-300',
+                isBlockHidden ? 'w-[200px]' : 'w-[250px]',
+              ]"
+              @keyup.native.enter="onSearch"
               data-drag-protected
             >
-              Search
+              <el-button
+                slot="append"
+                id="search-btn"
+                @click="onSearch"
+                data-drag-protected
+              >
+                Search
+              </el-button>
+            </el-input>
+            <el-button
+              size="medium"
+              class="mr-[2px] px-[12px]"
+              @click="onReset"
+              data-drag-protected
+            >
+              Reset
             </el-button>
-          </el-input>
-          <el-button
-            size="medium"
-            class="mr-[2px] px-[12px]"
-            @click="onReset"
+          </div>
+        </div>
+        <div class="mt-2">
+          <el-table
+            border
+            empty-text="No Data"
+            :data="tableData"
+            :class="{ 'block-hidden': isBlockHidden }"
+            :cell-style="addCellStyle"
+            :span-method="addRowSpan"
             data-drag-protected
           >
-            Reset
-          </el-button>
+            <el-table-column
+              prop="cluster"
+              label="Cluster"
+              width="110"
+              align="center"
+            >
+              <template slot-scope="scope">
+                <el-tag
+                  disable-transitions
+                  :type="tagTypeList[scope.row.clusterNumber % 4]"
+                >
+                  {{ scope.row.cluster }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="department" label="Department" width="144">
+            </el-table-column>
+            <el-table-column prop="reserved" label="Reserved" width="115">
+            </el-table-column>
+            <el-table-column prop="spotUsed" label="SpotUsed" width="115">
+            </el-table-column>
+            <el-table-column prop="blocked" label="Blocked" width="115">
+            </el-table-column>
+          </el-table>
         </div>
-      </div>
-      <div class="mt-2">
-        <el-table
-          border
-          empty-text="No Data"
-          :data="tableData"
-          :class="{ 'block-hidden': isBlockHidden }"
-          data-drag-protected
-        >
-          <el-table-column prop="cluster" label="Cluster" width="110">
-          </el-table-column>
-          <el-table-column prop="department" label="Department" width="144">
-          </el-table-column>
-          <el-table-column prop="reserved" label="Reserved" width="115">
-          </el-table-column>
-          <el-table-column prop="spotUsed" label="SpotUsed" width="115">
-          </el-table-column>
-          <el-table-column prop="blocked" label="Blocked" width="115">
-          </el-table-column>
-        </el-table>
       </div>
       <div class="mt-1 flex justify-end items-center">
         <el-pagination
@@ -176,9 +193,11 @@ export default defineComponent({
     const inputText = ref('')
     const keyWord = ref(/.*/)
     const rawData = ref([])
-    const storedHeight = ref(275)
+    const contentHeight = ref(275)
     const currentPage = ref(1)
     const pageSize = ref(3)
+
+    const tagTypeList = ['', 'success', 'info', 'warning']
 
     const { style } = useDraggable(container, {
       initialValue: { x: props.initX, y: props.initY },
@@ -232,7 +251,7 @@ export default defineComponent({
     }
     function onFold() {
       isFolding.value = true
-      if (!isFolded.value) storedHeight.value = content.value.scrollHeight
+      if (!isFolded.value) contentHeight.value = content.value.scrollHeight
       isFolded.value = !isFolded.value
       endFolding()
     }
@@ -251,13 +270,51 @@ export default defineComponent({
     function onAddPageSize() {
       if (pageSize.value < 15) {
         pageSize.value++
-        storedHeight.value += 48
+        contentHeight.value += 48
       }
     }
     function onSubPageSize() {
       if (pageSize.value > 3) {
         pageSize.value--
-        storedHeight.value -= 48
+        contentHeight.value -= 48
+      }
+    }
+    function addCellStyle({ row, columnIndex }) {
+      if (columnIndex === 0) {
+        return {
+          paddingTop: '6px',
+          paddingBottom: '6px',
+        }
+      } else if (columnIndex === 2) {
+        let percentage = 1 - row.usage
+        let red = Math.floor(percentage * 255)
+        let green = Math.floor(128 + percentage * 127)
+        return {
+          backgroundColor:
+            percentage === 0 ? `rgb(255,88,91)` : `rgb(${red}, ${green}, 255)`,
+          color: percentage > 0.6 ? '#606266' : '#fff',
+        }
+      }
+    }
+    function addRowSpan({ rowIndex, columnIndex }) {
+      if (columnIndex === 0) {
+        if (
+          rowIndex !== 0 &&
+          tableData.value[rowIndex].cluster ===
+            tableData.value[rowIndex - 1].cluster
+        )
+          return { rowspan: 0, colspan: 0 }
+        let endIndex = rowIndex + 1
+        while (endIndex < tableData.value.length) {
+          if (
+            tableData.value[endIndex].cluster !==
+            tableData.value[rowIndex].cluster
+          ) {
+            break
+          }
+          endIndex++
+        }
+        return { rowspan: endIndex - rowIndex, colspan: 1 }
       }
     }
     function generateData() {
@@ -287,7 +344,7 @@ export default defineComponent({
       clusterList.forEach((cluster) => {
         let tmp = {}
         departmentList.forEach((department) => {
-          let total = Math.floor(Math.random() * 100)
+          let total = Math.floor(Math.random() * 100) + 1
           Object.defineProperty(tmp, department, {
             value: {
               RESERVED_TOTAL: total,
@@ -309,37 +366,42 @@ export default defineComponent({
       return res
     }
     function getTableData() {
-      let mockData = generateData()
-      let randomData = []
-      for (let cluster in mockData) {
-        for (let department in mockData[cluster]) {
-          randomData.push({
+      let originData = generateData()
+      let tmpData = []
+      for (let cluster in originData) {
+        for (let department in originData[cluster]) {
+          let tmp = originData[cluster][department]
+          tmpData.push({
             cluster,
             department,
-            reservedUsed: mockData[cluster][department].RESERVED_USED,
-            reserved: mockData[cluster][department].RESERVED_TOTAL,
-            spotUsed: mockData[cluster][department].SPOT_USED,
-            blocked: mockData[cluster][department].RESERVED_BLOCKED,
-            index: 0,
+            reserved: `${tmp.RESERVED_USED}/${tmp.RESERVED_TOTAL}`,
+            spotUsed: tmp.SPOT_USED,
+            blocked: tmp.RESERVED_BLOCKED,
+            usage: tmp.RESERVED_USED / tmp.RESERVED_TOTAL,
+            clusterNumber: 0,
           })
         }
       }
-      randomData.sort((a, b) => {
+      tmpData.sort((a, b) => {
         return (
           a.cluster.localeCompare(b.cluster) ||
           a.department.localeCompare(b.department)
         )
       })
-      randomData.forEach((item, index) => {
-        item.index = index
-      })
-      rawData.value = randomData
+      let clusterNumber = 0
+      for (let i = 1; i < tmpData.length; i++) {
+        if (tmpData[i].cluster !== tmpData[i - 1].cluster) {
+          clusterNumber++
+        }
+        tmpData[i].clusterNumber = clusterNumber
+      }
+      rawData.value = tmpData
     }
 
     return {
       container,
       content,
-      storedHeight,
+      contentHeight,
       isDraggable,
       isFolded,
       isFolding,
@@ -357,6 +419,9 @@ export default defineComponent({
       onPageChange,
       onAddPageSize,
       onSubPageSize,
+      addCellStyle,
+      addRowSpan,
+      tagTypeList,
     }
   },
 })
