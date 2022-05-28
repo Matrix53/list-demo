@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'fixed rounded-[10px] border border-solid border-gray-200 p-[10px] bg-blue-50 transition-[width] duration-300',
+      'fixed border border-solid border-gray-200 p-[10px] bg-blue-50 transition-[width] duration-300',
       isBlockHidden ? 'w-[485px]' : 'w-[600px]',
     ]"
     :style="style"
@@ -9,7 +9,7 @@
   >
     <div class="grid grid-cols-2">
       <div class="flex justify-start items-center">
-        <h2 class="m-0 ml-3 font-normal text-xl cursor-default">
+        <h2 class="m-0 ml-1 font-normal text-xl cursor-default">
           Resource Usage
         </h2>
       </div>
@@ -37,22 +37,32 @@
       </div>
     </div>
     <div
-      ref="tableContainer"
       :class="[
-        'overflow-hidden transition-all duration-300',
+        'overflow-hidden transition-[opacity] duration-300',
         isFolded ? 'opacity-0' : 'opacity-100',
+        { folding: isFolding },
       ]"
       :style="{ height: isFolded ? '0px' : storedHeight + 'px' }"
+      ref="content"
     >
       <div class="mt-1 grid grid-cols-3">
         <div class="flex justify-start items-center">
-          <el-switch
-            v-model="isBlockHidden"
-            active-text="Hide Blocked"
-            class="ml-3"
-            data-drag-protected
-          >
-          </el-switch>
+          <el-button-group data-drag-protected class="ml-1">
+            <el-button
+              icon="el-icon-plus"
+              size="small"
+              @click="onAddPageSize"
+              plain
+            >
+            </el-button>
+            <el-button
+              icon="el-icon-minus"
+              size="small"
+              @click="onSubPageSize"
+              plain
+            >
+            </el-button>
+          </el-button-group>
         </div>
         <div class="col-span-2 flex justify-end items-center">
           <el-input
@@ -65,7 +75,7 @@
               'mr-2 transition-[width] duration-300',
               isBlockHidden ? 'w-[200px]' : 'w-[250px]',
             ]"
-            @keyup.enter="onSearch"
+            @keyup.native.enter="onSearch"
             data-drag-protected
           >
             <el-button
@@ -91,6 +101,7 @@
         <el-table
           border
           empty-text="No Data"
+          :data="tableData"
           :class="{ 'block-hidden': isBlockHidden }"
           data-drag-protected
         >
@@ -106,9 +117,14 @@
           </el-table-column>
         </el-table>
       </div>
-      <div class="mt-1 flex justify-end">
+      <div class="mt-1 flex justify-end items-center">
         <el-pagination
           background
+          :page-size="pageSize"
+          :current-page="currentPage"
+          :page-count="pageCount"
+          :pager-count="5"
+          @current-change="onPageChange"
           layout="prev, pager, next"
           class="relative left-2 pb-0"
           data-drag-protected
@@ -122,7 +138,7 @@
 <script>
 import { defineComponent } from '@vue/runtime-core'
 import { ref, computed } from '@vue/composition-api'
-import { useDraggable, useIntervalFn, useElementSize } from '@vueuse/core'
+import { useDraggable, useIntervalFn, useDebounceFn } from '@vueuse/core'
 import {
   CaretBackCircleOutline,
   CaretDownCircleOutline,
@@ -152,27 +168,23 @@ export default defineComponent({
   },
   setup(props) {
     const container = ref(null)
-    const tableContainer = ref(null)
-    const dataTable = ref(null)
+    const content = ref(null)
     const isDraggable = ref(true)
     const isFolded = ref(false)
+    const isFolding = ref(false)
     const isBlockHidden = ref(true)
     const inputText = ref('')
     const keyWord = ref(/.*/)
     const rawData = ref([])
-    const storedHeight = ref(191)
+    const storedHeight = ref(275)
+    const currentPage = ref(1)
+    const pageSize = ref(3)
 
     const { style } = useDraggable(container, {
       initialValue: { x: props.initX, y: props.initY },
       preventDefault: true,
       stopPropagation: true,
-      onStart(position, event) {
-        if (
-          !isFolded.value &&
-          position.x + 15 >= container.value.clientWidth &&
-          position.y + 15 >= container.value.clientHeight
-        )
-          return false
+      onStart(_position, event) {
         if (!isDraggable.value) return false
         for (
           let tmp = event.target;
@@ -185,31 +197,68 @@ export default defineComponent({
         event.target.style.cursor = 'move'
       },
       onEnd(_position, event) {
-        container.value?.classList.remove('moving')
+        container.value.classList.remove('moving')
         event.target.style.cursor = ''
       },
     })
+    const endFolding = useDebounceFn(() => {
+      isFolding.value = false
+    }, 310)
     useIntervalFn(getTableData, 2500, {
       immediateCallback: true,
     })
-    const { height } = useElementSize(tableContainer)
+
+    const filteredData = computed(() => {
+      return rawData.value.filter((item) => {
+        return (
+          item.cluster.match(keyWord.value) ||
+          item.department.match(keyWord.value)
+        )
+      })
+    })
+    const pageCount = computed(() => {
+      return Math.ceil(filteredData.value.length / pageSize.value)
+    })
+    const tableData = computed(() => {
+      let page = Math.min(currentPage.value, pageCount.value)
+      return filteredData.value.slice(
+        (page - 1) * pageSize.value,
+        page * pageSize.value
+      )
+    })
 
     function onLock() {
       isDraggable.value = !isDraggable.value
     }
     function onFold() {
-      if (!isFolded.value)
-        storedHeight.value = tableContainer.value.scrollHeight
+      isFolding.value = true
+      if (!isFolded.value) storedHeight.value = content.value.scrollHeight
       isFolded.value = !isFolded.value
+      endFolding()
     }
     function onSearch() {
       keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
+      currentPage.value = 1
     }
     function onReset() {
       inputText.value = ''
       keyWord.value = /.*/
-      // dataTable.value?.clearSorter()
-      // dataTable.value?.page(1)
+      currentPage.value = 1
+    }
+    function onPageChange(page) {
+      currentPage.value = page
+    }
+    function onAddPageSize() {
+      if (pageSize.value < 15) {
+        pageSize.value++
+        storedHeight.value += 48
+      }
+    }
+    function onSubPageSize() {
+      if (pageSize.value > 3) {
+        pageSize.value--
+        storedHeight.value -= 48
+      }
     }
     function generateData() {
       let clusterList = [
@@ -289,17 +338,25 @@ export default defineComponent({
 
     return {
       container,
-      tableContainer,
+      content,
       storedHeight,
       isDraggable,
       isFolded,
+      isFolding,
       isBlockHidden,
       inputText,
       style,
+      currentPage,
+      pageSize,
+      pageCount,
+      tableData,
       onSearch,
       onReset,
       onLock,
       onFold,
+      onPageChange,
+      onAddPageSize,
+      onSubPageSize,
     }
   },
 })
@@ -315,6 +372,9 @@ export default defineComponent({
 .moving {
   @apply shadow-lg;
 }
+.folding {
+  @apply transition-[opacity,height] duration-300;
+}
 .el-table >>> .el-table__body-wrapper {
   @apply overflow-x-hidden;
 }
@@ -323,5 +383,8 @@ export default defineComponent({
 }
 .block-hidden >>> .el-table__empty-text {
   @apply right-[45px];
+}
+.el-button-group >>> i {
+  @apply font-semibold;
 }
 </style>
