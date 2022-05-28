@@ -1,6 +1,9 @@
 <template>
   <div
-    class="fixed rounded-[10px] border border-solid border-gray-200 w-[485px] p-[10px] bg-blue-50"
+    :class="[
+      'fixed rounded-[10px] border border-solid border-gray-200 p-[10px] bg-blue-50 transition-[width] duration-300',
+      isBlockHidden ? 'w-[485px]' : 'w-[600px]',
+    ]"
     :style="style"
     ref="container"
   >
@@ -36,9 +39,10 @@
     <div
       ref="tableContainer"
       :class="[
-        'overflow-hidden transition-all duration-1000',
-        isFolded ? 'h-0 opacity-0' : `h-[${storedHeight}px] opacity-100`,
+        'overflow-hidden transition-all duration-300',
+        isFolded ? 'opacity-0' : 'opacity-100',
       ]"
+      :style="{ height: isFolded ? '0px' : storedHeight + 'px' }"
     >
       <div class="mt-1 grid grid-cols-3">
         <div class="flex justify-start items-center">
@@ -52,19 +56,31 @@
         </div>
         <div class="col-span-2 flex justify-end items-center">
           <el-input
-            placeholder="Clus. or Dept."
+            :placeholder="
+              isBlockHidden ? 'Clus. or Dept.' : 'Search Clus. or Dept.'
+            "
             v-model="inputText"
             size="medium"
-            class="mr-2 w-[200px]"
+            :class="[
+              'mr-2 transition-[width] duration-300',
+              isBlockHidden ? 'w-[200px]' : 'w-[250px]',
+            ]"
+            @keyup.enter="onSearch"
             data-drag-protected
           >
-            <el-button slot="append" id="search-btn" data-drag-protected>
+            <el-button
+              slot="append"
+              id="search-btn"
+              @click="onSearch"
+              data-drag-protected
+            >
               Search
             </el-button>
           </el-input>
           <el-button
             size="medium"
             class="mr-[2px] px-[12px]"
+            @click="onReset"
             data-drag-protected
           >
             Reset
@@ -72,14 +88,21 @@
         </div>
       </div>
       <div class="mt-2">
-        <el-table border data-drag-protected>
+        <el-table
+          border
+          empty-text="No Data"
+          :class="{ 'block-hidden': isBlockHidden }"
+          data-drag-protected
+        >
           <el-table-column prop="cluster" label="Cluster" width="110">
           </el-table-column>
-          <el-table-column prop="department" label="Department">
+          <el-table-column prop="department" label="Department" width="144">
           </el-table-column>
           <el-table-column prop="reserved" label="Reserved" width="115">
           </el-table-column>
           <el-table-column prop="spotUsed" label="SpotUsed" width="115">
+          </el-table-column>
+          <el-table-column prop="blocked" label="Blocked" width="115">
           </el-table-column>
         </el-table>
       </div>
@@ -98,7 +121,7 @@
 
 <script>
 import { defineComponent } from '@vue/runtime-core'
-import { ref, onMounted, computed, onUpdated } from '@vue/composition-api'
+import { ref, computed } from '@vue/composition-api'
 import { useDraggable, useIntervalFn, useElementSize } from '@vueuse/core'
 import {
   CaretBackCircleOutline,
@@ -175,11 +198,18 @@ export default defineComponent({
       isDraggable.value = !isDraggable.value
     }
     function onFold() {
-      if (!isFolded.value) storedHeight.value = height.value
+      if (!isFolded.value)
+        storedHeight.value = tableContainer.value.scrollHeight
       isFolded.value = !isFolded.value
     }
     function onSearch() {
       keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
+    }
+    function onReset() {
+      inputText.value = ''
+      keyWord.value = /.*/
+      // dataTable.value?.clearSorter()
+      // dataTable.value?.page(1)
     }
     function generateData() {
       let clusterList = [
@@ -267,6 +297,7 @@ export default defineComponent({
       inputText,
       style,
       onSearch,
+      onReset,
       onLock,
       onFold,
     }
@@ -283,5 +314,14 @@ export default defineComponent({
 }
 .moving {
   @apply shadow-lg;
+}
+.el-table >>> .el-table__body-wrapper {
+  @apply overflow-x-hidden;
+}
+.el-table >>> .el-table__empty-text {
+  @apply relative right-0 transition-[right] duration-300;
+}
+.block-hidden >>> .el-table__empty-text {
+  @apply right-[45px];
 }
 </style>
