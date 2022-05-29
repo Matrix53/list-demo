@@ -128,7 +128,6 @@
             empty-text="No Data"
             :data="tableData"
             :class="{ 'block-hidden': isBlockHidden }"
-            :cell-style="addCellStyle"
             :span-method="addRowSpan"
             data-drag-protected
           >
@@ -137,6 +136,7 @@
               label="Cluster"
               width="100"
               align="center"
+              class-name="cluster-col"
               :resizable="false"
             >
               <template v-slot="scope">
@@ -158,9 +158,18 @@
             <el-table-column
               prop="reserved"
               label="Reserved"
+              class-name="reserved-col"
               width="110"
               :resizable="false"
             >
+              <template v-slot="scope">
+                <div
+                  class="h-full w-full pl-[10px] leading-[47px]"
+                  :style="usageToStyle(scope.row.usage)"
+                >
+                  {{ scope.row.reserved }}
+                </div>
+              </template>
             </el-table-column>
             <el-table-column
               prop="spotUsed"
@@ -373,21 +382,14 @@ export default defineComponent({
       }
       event.currentTarget.blur()
     }
-    function addCellStyle({ row, columnIndex }) {
-      if (columnIndex === 0) {
-        return {
-          paddingTop: '6px',
-          paddingBottom: '6px',
-        }
-      } else if (columnIndex === 2) {
-        let percentage = 1 - row.usage
-        let red = Math.floor(percentage * 255)
-        let green = Math.floor(128 + percentage * 127)
-        return {
-          backgroundColor:
-            percentage === 0 ? `rgb(255,88,91)` : `rgb(${red}, ${green}, 255)`,
-          color: percentage > 0.6 ? '#606266' : '#fff',
-        }
+    function usageToStyle(usage) {
+      let percentage = 1 - usage
+      let red = Math.floor(percentage * 255)
+      let green = Math.floor(128 + percentage * 127)
+      return {
+        backgroundColor:
+          percentage === 0 ? `rgb(255,88,91)` : `rgb(${red}, ${green}, 255)`,
+        color: percentage > 0.6 ? '#606266' : '#fff',
       }
     }
     function addRowSpan({ rowIndex, columnIndex }) {
@@ -515,7 +517,7 @@ export default defineComponent({
       onPageChange,
       onAddPageSize,
       onSubPageSize,
-      addCellStyle,
+      usageToStyle,
       addRowSpan,
       tagTypeList,
     }
@@ -530,6 +532,9 @@ export default defineComponent({
 #search-btn {
   @apply px-[12px] pt-[11px] pb-[10px] rounded-l-none text-white bg-[#409EFF] hover:bg-[#66b1ff];
 }
+.el-input >>> .el-input-group__append {
+  @apply border-r-0;
+}
 .moving {
   @apply shadow-lg;
 }
@@ -541,6 +546,15 @@ export default defineComponent({
 }
 .el-table >>> .el-table__empty-text {
   @apply relative right-0 transition-[right] duration-300;
+}
+.el-table >>> td.reserved-col {
+  @apply h-[48px] p-0;
+}
+.el-table >>> td.reserved-col .cell {
+  @apply h-full w-full p-0;
+}
+.el-table >>> td.cluster-col {
+  @apply py-[6px];
 }
 .block-hidden >>> .el-table__empty-text {
   @apply right-[45px];
