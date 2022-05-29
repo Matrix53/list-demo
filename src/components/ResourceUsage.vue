@@ -525,7 +525,7 @@ export default defineComponent({
 })
 </script>
 
-<style scoped>
+<style lang="postcss" scoped>
 .round-shadow {
   @apply rounded-full flex justify-center items-center transition duration-300 hover:bg-slate-300/50;
 }
