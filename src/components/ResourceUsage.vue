@@ -1,39 +1,51 @@
 <template>
   <div
     :class="[
-      'fixed border border-solid border-gray-200 p-[10px] bg-blue-50 transition-[width] duration-300',
-      isBlockHidden ? 'w-[485px]' : 'w-[600px]',
+      'fixed rounded-lg border border-solid border-gray-200 p-[10px] bg-blue-50 transition-[width] duration-300',
+      isBlockHidden ? 'w-[440px]' : 'w-[540px]',
     ]"
     :style="style"
     ref="container"
   >
     <div class="grid grid-cols-2">
       <div class="flex justify-start items-center">
-        <h2 class="m-0 ml-1 font-normal text-xl cursor-default">
+        <h2 class="m-0 ml-1 font-normal text-xl cursor-default select-none">
           Resource Usage
         </h2>
       </div>
       <div class="flex justify-end items-center">
-        <span
-          class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer select-none"
-          @click="onLock"
-          data-drag-protected
+        <el-tooltip
+          :content="isDraggable ? 'Pin' : 'Unpin'"
+          :open-delay="300"
+          placement="top-start"
         >
-          <Icon size="20" color="#2080f0FF">
-            <LockOpenOutline v-if="isDraggable" />
-            <LockClosedOutline v-else />
-          </Icon>
-        </span>
-        <span
-          class="round-shadow h-6 w-6 p-1 cursor-pointer select-none"
-          @click="onFold"
-          data-drag-protected
+          <span
+            class="mr-1 round-shadow h-6 w-6 p-1 cursor-pointer select-none"
+            @click="onLock"
+            data-drag-protected
+          >
+            <Icon size="20" color="#2080f0FF">
+              <LockOpenOutline v-if="isDraggable" />
+              <LockClosedOutline v-else />
+            </Icon>
+          </span>
+        </el-tooltip>
+        <el-tooltip
+          :content="isFolded ? 'Unfold' : 'Fold'"
+          :open-delay="300"
+          placement="top-start"
         >
-          <Icon size="24" color="#2080f0FF">
-            <CaretBackCircleOutline v-if="isFolded" />
-            <CaretDownCircleOutline v-else />
-          </Icon>
-        </span>
+          <span
+            class="round-shadow h-6 w-6 p-1 cursor-pointer select-none"
+            @click="onFold"
+            data-drag-protected
+          >
+            <Icon size="24" color="#2080f0FF">
+              <CaretBackCircleOutline v-if="isFolded" />
+              <CaretDownCircleOutline v-else />
+            </Icon>
+          </span>
+        </el-tooltip>
       </div>
     </div>
     <div
@@ -49,20 +61,32 @@
         <div class="mt-1 grid grid-cols-3">
           <div class="flex justify-start items-center">
             <el-button-group data-drag-protected class="ml-1">
-              <el-button
-                icon="el-icon-plus"
-                size="small"
-                @click="onAddPageSize"
-                plain
+              <el-tooltip
+                content="Add Row"
+                :open-delay="300"
+                placement="top-start"
               >
-              </el-button>
-              <el-button
-                icon="el-icon-minus"
-                size="small"
-                @click="onSubPageSize"
-                plain
+                <el-button
+                  icon="el-icon-plus"
+                  size="small"
+                  @click="onAddPageSize"
+                  plain
+                >
+                </el-button>
+              </el-tooltip>
+              <el-tooltip
+                content="Reduce Row"
+                :open-delay="300"
+                placement="top-start"
               >
-              </el-button>
+                <el-button
+                  icon="el-icon-minus"
+                  size="small"
+                  @click="onSubPageSize"
+                  plain
+                >
+                </el-button>
+              </el-tooltip>
             </el-button-group>
           </div>
           <div class="col-span-2 flex justify-end items-center">
@@ -111,10 +135,11 @@
             <el-table-column
               prop="cluster"
               label="Cluster"
-              width="110"
+              width="100"
               align="center"
+              :resizable="false"
             >
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag
                   disable-transitions
                   :type="tagTypeList[scope.row.clusterNumber % 4]"
@@ -123,13 +148,71 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="department" label="Department" width="144">
+            <el-table-column
+              prop="department"
+              label="Department"
+              width="120"
+              :resizable="false"
+            >
             </el-table-column>
-            <el-table-column prop="reserved" label="Reserved" width="115">
+            <el-table-column
+              prop="reserved"
+              label="Reserved"
+              width="110"
+              :resizable="false"
+            >
             </el-table-column>
-            <el-table-column prop="spotUsed" label="SpotUsed" width="115">
+            <el-table-column
+              prop="spotUsed"
+              label="SpotUsed"
+              width="110"
+              :resizable="false"
+            >
+              <template #header>
+                <template v-if="!isBlockHidden">SpotUsed</template>
+                <template v-else>
+                  SpotUsed
+                  <el-tooltip
+                    content="Show Blocked"
+                    :open-delay="300"
+                    placement="top-start"
+                  >
+                    <el-button
+                      type="text"
+                      icon="el-icon-caret-right"
+                      class="pt-0 pb-0 switch-btn"
+                      @click="onShowBlocked"
+                    >
+                    </el-button>
+                  </el-tooltip>
+                </template>
+              </template>
             </el-table-column>
-            <el-table-column prop="blocked" label="Blocked" width="115">
+            <el-table-column
+              prop="blocked"
+              label="Blocked"
+              width="100"
+              :resizable="false"
+            >
+              <template #header>
+                <template v-if="isBlockHidden">Blocked</template>
+                <template v-else>
+                  Blocked
+                  <el-tooltip
+                    content="Hide Blocked"
+                    :open-delay="300"
+                    placement="top-start"
+                  >
+                    <el-button
+                      type="text"
+                      icon="el-icon-caret-left"
+                      class="pt-0 pb-0 switch-btn"
+                      @click="onHideBlocked"
+                    >
+                    </el-button>
+                  </el-tooltip>
+                </template>
+              </template>
             </el-table-column>
           </el-table>
         </div>
@@ -246,38 +329,49 @@ export default defineComponent({
       )
     })
 
-    function onLock() {
+    function onLock(event) {
       isDraggable.value = !isDraggable.value
+      event.currentTarget.blur()
     }
-    function onFold() {
+    function onFold(event) {
       isFolding.value = true
-      if (!isFolded.value) contentHeight.value = content.value.scrollHeight
+      if (!isFolded.value) contentHeight.value = content.value.scrollHeight - 2
       isFolded.value = !isFolded.value
       endFolding()
+      event.currentTarget.blur()
     }
     function onSearch() {
       keyWord.value = new RegExp(inputText.value.trim().split(/\s+/).join('|'))
       currentPage.value = 1
     }
-    function onReset() {
+    function onReset(event) {
       inputText.value = ''
       keyWord.value = /.*/
       currentPage.value = 1
+      event.currentTarget.blur()
+    }
+    function onShowBlocked() {
+      isBlockHidden.value = false
+    }
+    function onHideBlocked() {
+      isBlockHidden.value = true
     }
     function onPageChange(page) {
       currentPage.value = page
     }
-    function onAddPageSize() {
+    function onAddPageSize(event) {
       if (pageSize.value < 15) {
         pageSize.value++
         contentHeight.value += 48
       }
+      event.currentTarget.blur()
     }
-    function onSubPageSize() {
+    function onSubPageSize(event) {
       if (pageSize.value > 3) {
         pageSize.value--
         contentHeight.value -= 48
       }
+      event.currentTarget.blur()
     }
     function addCellStyle({ row, columnIndex }) {
       if (columnIndex === 0) {
@@ -416,6 +510,8 @@ export default defineComponent({
       onReset,
       onLock,
       onFold,
+      onShowBlocked,
+      onHideBlocked,
       onPageChange,
       onAddPageSize,
       onSubPageSize,
@@ -451,5 +547,8 @@ export default defineComponent({
 }
 .el-button-group >>> i {
   @apply font-semibold;
+}
+.switch-btn >>> i {
+  @apply font-black;
 }
 </style>
